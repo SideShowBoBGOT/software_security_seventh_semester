@@ -1,38 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
-
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Login</title>
-        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-    </head>
-
-    <body>
-        <main id="main-holder">
-            <a href="/logout" id="logout">Logout</a>
-
-            <h1 id="login-header">Login</h1>
-
-            <div id="login-error-msg-holder">
-                <p id="login-error-msg">Invalid username <span id="error-msg-second-line">and/or password</span></p>
-            </div>
-
-            <form id="login-form" action="/api/login" method="post">
-                <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Username">
-                <input type="password" name="password" id="password-field" class="login-form-field" placeholder="Password">
-                <input type="submit" value="Login" id="login-form-submit">
-            </form>
-
-        </main>
-    </body>
-
-
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <style>
         html {
             height: 100%;
         }
-
         body {
             height: 100%;
             margin: 0;
@@ -42,22 +18,17 @@
             align-items: center;
             background-color: #3a3a3a;
         }
-
-        #logout {
-            opacity: 0;
-        }
-
         #main-holder {
             width: 50%;
             height: 70%;
-            display: grid;
-            justify-items: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
             align-items: center;
             background-color: white;
             border-radius: 7px;
             box-shadow: 0px 0px 5px 2px black;
         }
-
         #login-error-msg-holder {
             width: 100%;
             height: 100%;
@@ -65,7 +36,6 @@
             justify-items: center;
             align-items: center;
         }
-
         #login-error-msg {
             width: 23%;
             text-align: center;
@@ -78,31 +48,28 @@
             background-color: #e58f8f;
             opacity: 0;
         }
-
         #error-msg-second-line {
             display: block;
         }
-
         #login-form {
-            align-self: flex-start;
-            display: grid;
-            justify-items: center;
+            display: flex;
+            flex-direction: column;
             align-items: center;
+            width: 100%;
+            max-width: 300px;
         }
-
         .login-form-field::placeholder {
             color: #3a3a3a;
         }
-
         .login-form-field {
+            width: 100%;
             border: none;
             border-bottom: 1px solid #3a3a3a;
             margin-bottom: 10px;
             border-radius: 3px;
             outline: none;
-            padding: 0px 0px 5px 5px;
+            padding: 10px 5px;
         }
-
         #login-form-submit {
             width: 100%;
             padding: 7px;
@@ -113,72 +80,73 @@
             background-color: #3a3a3a;
             cursor: pointer;
             outline: none;
+            margin-top: 10px;
         }
     </style>
+</head>
+<body>
+    <main id="main-holder">
+        <h1 id="login-header">Login</h1>
+        <div id="login-error-msg-holder" style="display: none;">
+            <p id="login-error-msg">Invalid username and/or password</p>
+        </div>
+        <form id="login-form">
+            <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Username">
+            <input type="password" name="password" id="password-field" class="login-form-field" placeholder="Password">
+            <input type="submit" value="Login" id="login-form-submit">
+        </form>
+        <a href="#" id="logout" style="display: none;">Logout</a>
+    </main>
 
     <script>
-        const session = sessionStorage.getItem('session');
-
-        let token;
-
-        try {
-            token = JSON.parse(session).token;
-        } catch(e) {}
-
-        if (token) {
-            axios.get('/', {
-                headers: {
-                    Authorization: token
-                }
-            }).then((response) => {
-                const { username } = response.data;
-
-                if (username) {
-                    const mainHolder = document.getElementById("main-holder");
-                    const loginHeader = document.getElementById("login-header");
-
-                    loginForm.remove();
-                    loginErrorMsg.remove();
-                    loginHeader.remove();
-
-                    mainHolder.append(`Hello ${username}`);
-                    logoutLink.style.opacity = 1;
-                }
-            });
-        }
-
-
-        const loginForm = document.getElementById("login-form");
-        const loginButton = document.getElementById("login-form-submit");
-        const loginErrorMsg = document.getElementById("login-error-msg");
-        const logoutLink =  document.getElementById("logout");
-
-        logoutLink.addEventListener("click", (e) => {
+        document.getElementById("login-form").addEventListener("submit", function (e) {
             e.preventDefault();
-            sessionStorage.removeItem('session');
-            location.reload();
+            const login = document.getElementById("username-field").value;
+            const password = document.getElementById("password-field").value;
+            axios.post('/api/login', {login, password}).then(response => {
+                sessionStorage.setItem('authToken',response.data.token);
+                alert('You are now logged in!');
+                document.getElementById("logout").style.display = "block";
+                document.getElementById("login-form").style.display = "none";
+            }).catch(error => {
+                document.getElementById("login-error-msg-holder").style.display = "block";
+            });
         });
 
-        loginButton.addEventListener("click", (e) => {
+        document.getElementById("logout").addEventListener("click", function (e) {
             e.preventDefault();
-            const login = loginForm.login.value;
-            const password = loginForm.password.value;
+            sessionStorage.removeItem('authToken');
+            alert('You are now logged out!');
+            document.getElementById("login-form").style.display = "block";
+            this.style.display = "none";
+        });
 
+        if (sessionStorage.getItem('authToken')) {
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("logout").style.display = "block";
+        }
 
-            axios({
-                method: 'post',
-                url: '/api/login',
-                data: {
-                    login,
-                    password
-                }
-            }).then((response) => {
-                const { username } =  response.data;
-                sessionStorage.setItem('session', JSON.stringify(response.data));
-                location.reload();
-            }).catch((response) => {
-                loginErrorMsg.style.opacity = 1;
-            });
-        })
+        document.addEventListener("DOMContentLoaded", function () {
+            const token = sessionStorage.getItem('authToken');
+            if (token) {
+                axios.get('/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }).then(response => {
+                    const {username} = response.data;
+                    if (username) {
+                        const mainHolder = document.getElementById("main-holder");
+                        const loginHeader = document.getElementById("login-header");
+                        mainHolder.append(`Hello ${username}`);
+                        loginForm.remove();
+                        loginErrorMsg.remove();
+                        loginHeader.remove();
+                        logoutLink.style.opacity = 1;
+                    }
+                }).catch(error => {});
+            }
+        });
     </script>
+</body>
 </html>
