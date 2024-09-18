@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -36,6 +47,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getUserInfo = getUserInfo;
+exports.handleError = handleError;
 var dotenv = require("dotenv");
 var express = require("express");
 var axios_1 = require("axios");
@@ -52,40 +65,65 @@ app.use(session({
     saveUninitialized: true,
     cookie: { secure: process.env.NODE_ENV === 'production' },
 }));
+var expiration_period = 5 * 60 * 1000;
 var refreshToken = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var tokens, expirationDate, response, error_1;
-    var _a;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+    var tokens, isTokenExpired, logExpirationDate, refreshAuthToken, newTokens, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
                 tokens = req.session.tokens;
-                if (tokens === null || tokens === void 0 ? void 0 : tokens.expires_in) {
-                    expirationDate = new Date(tokens.expires_in);
-                    console.log("Token expires on: ".concat(expirationDate.toLocaleString()));
-                }
-                if (!(tokens && Date.now() > tokens.expires_in - 5 * 60 * 1000)) return [3 /*break*/, 4];
-                _b.label = 1;
-            case 1:
-                _b.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, axios_1.default.post("https://".concat(process.env.AUTH0_DOMAIN, "/oauth/token"), new URLSearchParams({
-                        grant_type: 'refresh_token',
-                        client_id: process.env.AUTH0_CLIENT_ID,
-                        client_secret: process.env.AUTH0_CLIENT_SECRET,
-                        refresh_token: tokens.refresh_token,
-                    }), {
-                        headers: { 'content-type': 'application/x-www-form-urlencoded' },
-                    })];
-            case 2:
-                response = _b.sent();
-                req.session.tokens = {
-                    access_token: response.data.access_token,
-                    refresh_token: tokens.refresh_token,
-                    expires_in: Date.now() + response.data.expires_in * 1000,
+                if (!tokens)
+                    return [2 /*return*/, next()];
+                isTokenExpired = function (expiresIn, bufferPeriod) {
+                    return Date.now() > expiresIn - bufferPeriod;
                 };
+                logExpirationDate = function (expiresIn) {
+                    var expirationDate = new Date(expiresIn);
+                    console.log("Token expires on: ".concat(expirationDate.toLocaleString()));
+                };
+                refreshAuthToken = function (refreshToken) { return __awaiter(void 0, void 0, void 0, function () {
+                    var response, error_2;
+                    var _a, _b;
+                    return __generator(this, function (_c) {
+                        switch (_c.label) {
+                            case 0:
+                                _c.trys.push([0, 2, , 3]);
+                                return [4 /*yield*/, axios_1.default.post("https://".concat(process.env.AUTH0_DOMAIN, "/oauth/token"), new URLSearchParams({
+                                        grant_type: 'refresh_token',
+                                        client_id: process.env.AUTH0_CLIENT_ID,
+                                        client_secret: process.env.AUTH0_CLIENT_SECRET,
+                                        refresh_token: refreshToken,
+                                    }), { headers: { 'content-type': 'application/x-www-form-urlencoded' } })];
+                            case 1:
+                                response = _c.sent();
+                                return [2 /*return*/, {
+                                        access_token: response.data.access_token,
+                                        expires_in: Date.now() + response.data.expires_in * 1000,
+                                    }];
+                            case 2:
+                                error_2 = _c.sent();
+                                throw new Error(((_a = error_2.response) === null || _a === void 0 ? void 0 : _a.data)
+                                    ? JSON.stringify((_b = error_2.response) === null || _b === void 0 ? void 0 : _b.data)
+                                    : error_2.message);
+                            case 3: return [2 /*return*/];
+                        }
+                    });
+                }); };
+                if (tokens.expires_in) {
+                    logExpirationDate(tokens.expires_in);
+                }
+                if (!isTokenExpired(tokens.expires_in, expiration_period)) return [3 /*break*/, 4];
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, refreshAuthToken(tokens.refresh_token)];
+            case 2:
+                newTokens = _a.sent();
+                req.session.tokens = __assign(__assign({}, newTokens), { refresh_token: tokens.refresh_token });
                 return [3 /*break*/, 4];
             case 3:
-                error_1 = _b.sent();
-                console.error('Error refreshing token:', ((_a = error_1.response) === null || _a === void 0 ? void 0 : _a.data) || error_1.message);
+                error_1 = _a.sent();
+                console.error('Error refreshing token:', error_1.message);
                 return [2 /*return*/, res.status(401).json({ error: 'Failed to refresh token' })];
             case 4:
                 next();
@@ -94,50 +132,82 @@ var refreshToken = function (req, res, next) { return __awaiter(void 0, void 0, 
     });
 }); };
 app.use(refreshToken);
-app.get('/', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var access_token, response, error_2;
-    var _a;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
-            case 0:
-                if (!req.session.tokens) return [3 /*break*/, 5];
-                _b.label = 1;
-            case 1:
-                _b.trys.push([1, 3, , 4]);
-                access_token = req.session.tokens.access_token;
-                return [4 /*yield*/, axios_1.default.get("https://".concat(process.env.AUTH0_DOMAIN, "/userinfo"), {
-                        headers: {
-                            Authorization: "Bearer ".concat(access_token),
-                        },
-                    })];
-            case 2:
-                response = _b.sent();
-                res.json({
-                    user: response.data,
-                    logout: '/logout',
-                });
-                return [3 /*break*/, 4];
-            case 3:
-                error_2 = _b.sent();
-                console.error('Error:', ((_a = error_2.response) === null || _a === void 0 ? void 0 : _a.data) || error_2.message);
-                req.session.destroy(function () { });
-                res.status(500).json({ error: 'An error occurred while fetching user info' });
-                return [3 /*break*/, 4];
-            case 4: return [3 /*break*/, 6];
-            case 5:
-                res.sendFile(path.join(__dirname, 'index.html'));
-                _b.label = 6;
-            case 6: return [2 /*return*/];
-        }
+function handleHomeRoute(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var session, userInfo, error_3;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    session = req.session;
+                    if (!session.tokens) return [3 /*break*/, 6];
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 5]);
+                    return [4 /*yield*/, getUserInfo(session.tokens.access_token)];
+                case 2:
+                    userInfo = _a.sent();
+                    res.json({
+                        user: userInfo,
+                        logout: '/logout',
+                    });
+                    return [3 /*break*/, 5];
+                case 3:
+                    error_3 = _a.sent();
+                    return [4 /*yield*/, handleUserInfoError(req, res, error_3)];
+                case 4:
+                    _a.sent();
+                    return [3 /*break*/, 5];
+                case 5: return [3 /*break*/, 7];
+                case 6:
+                    res.sendFile(path.join(__dirname, 'index.html'));
+                    _a.label = 7;
+                case 7: return [2 /*return*/];
+            }
+        });
     });
-}); });
-app.get('/logout', function (req, res) {
+}
+function handleUserInfoError(req, res, error) {
+    return __awaiter(this, void 0, void 0, function () {
+        var _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    console.error('Error:', ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message);
+                    return [4 /*yield*/, new Promise(function (resolve) { return req.session.destroy(function () { return resolve(); }); })];
+                case 1:
+                    _b.sent();
+                    res.status(500).json({ error: 'An error occurred while fetching user info' });
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+function handleLogout(req, res) {
     req.session.destroy(function () {
         res.redirect('/');
     });
-});
+}
+function getUserInfo(accessToken) {
+    return __awaiter(this, void 0, void 0, function () {
+        var response;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, axios_1.default.get("https://".concat(process.env.AUTH0_DOMAIN, "/userinfo"), {
+                        headers: {
+                            Authorization: "Bearer ".concat(accessToken),
+                        },
+                    })];
+                case 1:
+                    response = _a.sent();
+                    return [2 /*return*/, response.data];
+            }
+        });
+    });
+}
+app.get('/', handleHomeRoute);
+app.get('/logout', handleLogout);
 app.post('/api/login', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, login, password, response, error_3;
+    var _a, login, password, response, error_4;
     var _b;
     return __generator(this, function (_c) {
         switch (_c.label) {
@@ -165,25 +235,20 @@ app.post('/api/login', function (req, res) { return __awaiter(void 0, void 0, vo
                 res.json({ success: true, token: response.data.access_token });
                 return [3 /*break*/, 3];
             case 2:
-                error_3 = _c.sent();
-                console.error('Login failed:', ((_b = error_3.response) === null || _b === void 0 ? void 0 : _b.data) || error_3.message);
+                error_4 = _c.sent();
+                console.error('Login failed:', ((_b = error_4.response) === null || _b === void 0 ? void 0 : _b.data) || error_4.message);
                 res.status(401).send('Login failed');
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
     });
 }); });
-app.post('/api/register', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, email, password, name, nickname, authData, userResponse, error_4;
-    var _b, _c;
-    return __generator(this, function (_d) {
-        switch (_d.label) {
-            case 0:
-                _a = req.body, email = _a.email, password = _a.password, name = _a.name, nickname = _a.nickname;
-                _d.label = 1;
-            case 1:
-                _d.trys.push([1, 4, , 5]);
-                return [4 /*yield*/, axios_1.default.post("https://".concat(process.env.AUTH0_DOMAIN, "/oauth/token"), new URLSearchParams({
+function getAuth0Token() {
+    return __awaiter(this, void 0, void 0, function () {
+        var response;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, axios_1.default.post("https://".concat(process.env.AUTH0_DOMAIN, "/oauth/token"), new URLSearchParams({
                         grant_type: 'client_credentials',
                         client_id: process.env.AUTH0_CLIENT_ID,
                         client_secret: process.env.AUTH0_CLIENT_SECRET,
@@ -191,42 +256,71 @@ app.post('/api/register', function (req, res) { return __awaiter(void 0, void 0,
                     }), {
                         headers: { 'content-type': 'application/x-www-form-urlencoded' },
                     })];
-            case 2:
-                authData = _d.sent();
-                return [4 /*yield*/, axios_1.default.post("https://".concat(process.env.AUTH0_DOMAIN, "/api/v2/users"), {
-                        email: email,
-                        password: password,
-                        connection: 'Username-Password-Authentication',
-                        verify_email: true,
-                        name: name,
-                        nickname: nickname,
-                        picture: 'https://i.pinimg.com/originals/e1/4c/ae/e14cae2f0f44121ab4e3506002ba1a55.jpg',
-                    }, {
+                case 1:
+                    response = _a.sent();
+                    return [2 /*return*/, response.data.access_token];
+            }
+        });
+    });
+}
+function registerUser(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var _a, email, password, name, nickname, authToken, user, error_5;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    _a = req.body, email = _a.email, password = _a.password, name = _a.name, nickname = _a.nickname;
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 4, , 5]);
+                    return [4 /*yield*/, getAuth0Token()];
+                case 2:
+                    authToken = _b.sent();
+                    return [4 /*yield*/, createAuth0User(authToken, { email: email, password: password, name: name, nickname: nickname })];
+                case 3:
+                    user = _b.sent();
+                    res.status(201).json({
+                        success: true,
+                        userId: user,
+                        login: '/',
+                    });
+                    return [3 /*break*/, 5];
+                case 4:
+                    error_5 = _b.sent();
+                    handleError(res, error_5);
+                    return [3 /*break*/, 5];
+                case 5: return [2 /*return*/];
+            }
+        });
+    });
+}
+function createAuth0User(token, userData) {
+    return __awaiter(this, void 0, void 0, function () {
+        var response;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, axios_1.default.post("https://".concat(process.env.AUTH0_DOMAIN, "/api/v2/users"), __assign(__assign({}, userData), { connection: 'Username-Password-Authentication', verify_email: true, picture: 'https://i.pinimg.com/originals/e1/4c/ae/e14cae2f0f44121ab4e3506002ba1a55.jpg' }), {
                         headers: {
-                            Authorization: "Bearer ".concat(authData.data.access_token),
+                            Authorization: "Bearer ".concat(token),
                             'content-type': 'application/json',
                         },
                     })];
-            case 3:
-                userResponse = _d.sent();
-                res.status(201).json({
-                    success: true,
-                    userId: userResponse.data,
-                    login: '/',
-                });
-                return [3 /*break*/, 5];
-            case 4:
-                error_4 = _d.sent();
-                console.error('Registration failed:', ((_b = error_4.response) === null || _b === void 0 ? void 0 : _b.data) || error_4.message);
-                res.status(400).json({
-                    success: false,
-                    error: (_c = error_4.response) === null || _c === void 0 ? void 0 : _c.data,
-                });
-                return [3 /*break*/, 5];
-            case 5: return [2 /*return*/];
-        }
+                case 1:
+                    response = _a.sent();
+                    return [2 /*return*/, response.data];
+            }
+        });
     });
-}); });
+}
+function handleError(res, error) {
+    var _a, _b;
+    console.error('Registration failed:', ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message);
+    res.status(400).json({
+        success: false,
+        error: ((_b = error.response) === null || _b === void 0 ? void 0 : _b.data) || error.message,
+    });
+}
+app.post('/api/register', registerUser);
 app.listen(port, function () {
     console.log("Example app listening on port ".concat(port));
 });
