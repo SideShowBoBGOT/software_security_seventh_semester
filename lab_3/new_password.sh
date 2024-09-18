@@ -1,0 +1,8 @@
+curl --request PATCH \
+  --url 'https://dev-88qrd45kn4mz6ptn.us.auth0.com/api/v2/users/auth0|66ea88492cf6b2fff551dc32' \
+  --header 'content-type: application/json' \
+  --header 'accept: application/json' \
+  --header 'Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImI0TURTYVhPclJsNjF4QWZPWktqMyJ9.eyJpc3MiOiJodHRwczovL2Rldi04OHFyZDQ1a240bXo2cHRuLnVzLmF1dGgwLmNvbS8iLCJzdWIiOiJ6ZHpoTjRkSURtSXVwdG5BclBoclo0VEVRQWtRTkdESEBjbGllbnRzIiwiYXVkIjoiaHR0cHM6Ly9kZXYtODhxcmQ0NWtuNG16NnB0bi51cy5hdXRoMC5jb20vYXBpL3YyLyIsImlhdCI6MTcyNjY1NjE0NCwiZXhwIjoxNzI2NzQyNTQ0LCJzY29wZSI6InJlYWQ6dXNlcnMgdXBkYXRlOnVzZXJzIGNyZWF0ZTp1c2VycyB1cGRhdGU6dXNlcnNfYXBwX21ldGFkYXRhIiwiZ3R5IjoiY2xpZW50LWNyZWRlbnRpYWxzIiwiYXpwIjoiemR6aE40ZElEbUl1cHRuQXJQaHJaNFRFUUFrUU5HREgifQ.T0Z9JByhb6n5idu-e1wFWX4wwN8cUDiqlbQ7nV2bhf5nBJpjbRd_-HGTrJReYsLK0mb6lOcyEOCHopCy3e6Teab7H8rGyAue3ExTUnM0XFXI75Nz8mLwF9oEaEUZ0RbkMVpHea404TlqwLFIIFniMn-R28Avks6Hv2rIvZue64K6WFaPuKY4t3ivc1AkhgmGAX4tYh5ByXPhcp7Q8rUDoDwWUOfU4dDfRoFI5DV4CgQYDC3LvAI_CqsIElFsDYZDxR4S7whgfgR1Lb-qmEDS4g2nrTFO14OzQFld48IIA6jxZ1iNXj4wIZsYUoFoXPWqac8B7Ac2_gEtBaklOkmJXw' \
+  --data '{
+        "password":"IP11_NEW_Password"
+    }'
