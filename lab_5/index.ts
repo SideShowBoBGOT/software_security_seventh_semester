@@ -3,6 +3,7 @@ import * as express from 'express';
 import axios, { AxiosError } from 'axios';
 import * as path from 'path';
 import * as session from 'express-session';
+import { auth } from 'express-oauth2-jwt-bearer';
 
 dotenv.config();
 
@@ -31,7 +32,6 @@ interface RegisterBody {
   nickname: string;
 }
 
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
@@ -42,6 +42,28 @@ app.use(
     cookie: { secure: process.env.NODE_ENV === 'production' },
   })
 );
+
+const checkJwt = auth({
+  audience: process.env.AUDIENCE,
+  issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}/`,
+})
+
+app.get('/api/userinfo', checkJwt, async (req, res) => {
+  const token = req.headers['authorization']
+  try {
+    const response = await axios({
+      method: 'get',
+      url: `https://${process.env.AUTH0_DOMAIN}/userinfo`,
+      headers: {
+        'content-type': 'application/json',
+        Authorization: token,
+      },
+    })
+    res.json({ success: true, user: response.data })
+  } catch (e) {
+    console.log(e)
+  }
+})
 
 const expiration_period = 5 * 60 * 1000;
 
