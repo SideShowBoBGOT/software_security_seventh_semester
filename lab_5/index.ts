@@ -136,7 +136,7 @@ function handleLogout(req: express.Request, res: express.Response) {
   });
 }
 
-export async function getUserInfo(accessToken: string) {
+async function getUserInfo(accessToken: string) {
   const response = await axios.get(
     `https://${process.env.AUTH0_DOMAIN}/userinfo`,
     {
@@ -234,7 +234,7 @@ async function createAuth0User(token: string, userData: Omit<RegisterBody, 'pass
   return response.data;
 }
 
-export function handleError(res: express.Response, error: Error | AxiosError) {
+function handleError(res: express.Response, error: Error | AxiosError) {
   console.error('Registration failed:', (error as AxiosError).response?.data || error.message);
   res.status(400).json({
     success: false,
